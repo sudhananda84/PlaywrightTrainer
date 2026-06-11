@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TypeScript + Playwright AI Tutor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #1a1a1a; height: 100vh; overflow: hidden; }
+  #app { display: flex; flex-direction: column; height: 100vh; }
+  #header {
+    background: #fff; border-bottom: 1px solid #e5e7eb;
+    padding: 10px 16px; display: flex; align-items: center; gap: 12px;
+    flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  #header-logo { width: 38px; height: 38px; border-radius: 50%; background: #dbeafe; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  #header-info { flex: 1; }
+  #header-title { font-size: 15px; font-weight: 600; color: #111; }
+  #header-sub { font-size: 12px; color: #6b7280; }
+  #progress-wrap { display: flex; align-items: center; gap: 8px; }
+  #progress-bar-bg { width: 120px; height: 7px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+  #progress-bar { height: 100%; background: #2563eb; border-radius: 4px; transition: width 0.4s; }
+  #progress-label { font-size: 11px; color: #6b7280; min-width: 34px; text-align: right; font-weight: 500; }
+  #body { display: flex; flex: 1; overflow: hidden; }
+  #sidebar { width: 230px; flex-shrink: 0; background: #fff; border-right: 1px solid #e5e7eb; overflow-y: auto; padding: 8px 0; }
+  .sidebar-section-title { font-size: 10px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.08em; padding: 10px 14px 4px; }
+  .curriculum-item { padding: 7px 14px; cursor: pointer; font-size: 12.5px; color: #6b7280; border-left: 2px solid transparent; transition: all 0.15s; display: flex; align-items: center; gap: 7px; }
+  .curriculum-item:hover { background: #f9fafb; color: #111; }
+  .curriculum-item.active { border-left-color: #2563eb; background: #eff6ff; color: #1d4ed8; font-weight: 600; }
+  .curriculum-item.done { color: #9ca3af; }
+  .curriculum-item .item-icon { font-size: 14px; flex-shrink: 0; }
+  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #f9fafb; }
+  #chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; scroll-behavior: smooth; }
+  .msg { display: flex; gap: 10px; align-items: flex-start; }
+  .msg.user { flex-direction: row-reverse; }
+  .msg-avatar { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+  .msg-avatar.tutor { background: #dbeafe; color: #1d4ed8; }
+  .msg-avatar.user { background: #d1fae5; color: #065f46; }
+  .msg-bubble { max-width: 80%; padding: 11px 15px; border-radius: 14px; font-size: 14px; line-height: 1.7; background: #fff; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+  .msg.user .msg-bubble { background: #eff6ff; border-color: #bfdbfe; color: #1e3a5f; }
+  .msg-bubble code { font-family: 'Courier New', monospace; font-size: 12.5px; background: #f3f4f6; padding: 1px 6px; border-radius: 4px; color: #1d4ed8; }
+  .msg-bubble pre { background: #1e1e2e; color: #cdd6f4; border-radius: 10px; padding: 14px; margin: 10px 0; font-family: 'Courier New', monospace; font-size: 12.5px; line-height: 1.65; overflow-x: auto; white-space: pre; }
+  .msg-bubble pre .kw { color: #cba6f7; }
+  .msg-bubble pre .str { color: #a6e3a1; }
+  .msg-bubble pre .cmt { color: #6c7086; font-style: italic; }
+  .msg-bubble pre .num { color: #fab387; }
+  .msg-bubble .analogy-box { background: #f0fdf4; border-left: 3px solid #16a34a; padding: 9px 12px; border-radius: 0 8px 8px 0; margin: 9px 0; font-size: 13.5px; color: #14532d; }
+  .msg-bubble .warn-box { background: #fffbeb; border-left: 3px solid #d97706; padding: 9px 12px; border-radius: 0 8px 8px 0; margin: 9px 0; font-size: 13.5px; color: #78350f; }
+  .msg-bubble .tip-box { background: #eff6ff; border-left: 3px solid #2563eb; padding: 9px 12px; border-radius: 0 8px 8px 0; margin: 9px 0; font-size: 13.5px; color: #1e3a5f; }
+  .msg-bubble h3 { font-size: 14.5px; font-weight: 600; margin: 12px 0 5px; color: #111; }
+  .msg-bubble ul { padding-left: 20px; margin: 6px 0; }
+  .msg-bubble li { margin: 4px 0; font-size: 13.5px; }
+  .msg-bubble strong { font-weight: 600; }
+  .typing-indicator { display: flex; align-items: center; gap: 5px; padding: 12px 15px; }
+  .typing-dot { width: 7px; height: 7px; border-radius: 50%; background: #9ca3af; animation: blink 1.2s infinite; }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink { 0%,80%,100% { opacity: 0.2; } 40% { opacity: 1; } }
+  #input-wrap { border-top: 1px solid #e5e7eb; padding: 10px 14px; background: #fff; display: flex; gap: 8px; align-items: flex-end; flex-shrink: 0; }
+  #user-input { flex: 1; border: 1px solid #d1d5db; border-radius: 12px; padding: 9px 14px; font-size: 14px; font-family: inherit; background: #f9fafb; color: #111; resize: none; max-height: 100px; min-height: 38px; outline: none; line-height: 1.5; transition: border-color 0.15s; }
+  #user-input:focus { border-color: #2563eb; background: #fff; }
+  #send-btn { width: 38px; height: 38px; border-radius: 50%; background: #2563eb; border: none; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; transition: all 0.15s; }
+  #send-btn:hover { background: #1d4ed8; transform: scale(1.05); }
+  #send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  #quick-chips { padding: 7px 12px; display: flex; gap: 6px; flex-wrap: wrap; background: #fff; border-top: 1px solid #f3f4f6; }
+  .chip { font-size: 11.5px; padding: 4px 11px; border: 1px solid #e5e7eb; border-radius: 20px; cursor: pointer; background: #f9fafb; color: #6b7280; white-space: nowrap; transition: all 0.15s; }
+  .chip:hover { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+  .chip.next-chip { border-color: #bfdbfe; color: #1d4ed8; background: #eff6ff; }
+  ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <div id="header-logo">🎓</div>
+    <div id="header-info">
+      <div id="header-title">TypeScript + Playwright — AI Tutor</div>
+      <div id="header-sub">Welcome! Let's start your journey.</div>
+    </div>
+    <div id="progress-wrap">
+      <div id="progress-bar-bg"><div id="progress-bar" style="width:0%"></div></div>
+      <div id="progress-label">0%</div>
+    </div>
+  </div>
+  <div id="body">
+    <div id="sidebar">
+      <div class="sidebar-section-title">TypeScript</div>
+      <div class="curriculum-item active" data-topic="intro" onclick="selectTopic('intro')"><i class="ti ti-player-play item-icon"></i> Introduction</div>
+      <div class="curriculum-item" data-topic="variables" onclick="selectTopic('variables')"><i class="ti ti-variable item-icon"></i> Variables & Types</div>
+      <div class="curriculum-item" data-topic="functions" onclick="selectTopic('functions')"><i class="ti ti-code item-icon"></i> Functions</div>
+      <div class="curriculum-item" data-topic="interfaces" onclick="selectTopic('interfaces')"><i class="ti ti-layout item-icon"></i> Interfaces & Types</div>
+      <div class="curriculum-item" data-topic="classes" onclick="selectTopic('classes')"><i class="ti ti-box item-icon"></i> Classes & OOP</div>
+      <div class="curriculum-item" data-topic="arrays" onclick="selectTopic('arrays')"><i class="ti ti-list item-icon"></i> Arrays & Objects</div>
+      <div class="curriculum-item" data-topic="async" onclick="selectTopic('async')"><i class="ti ti-clock item-icon"></i> Async / Await / Promises</div>
+      <div class="curriculum-item" data-topic="generics" onclick="selectTopic('generics')"><i class="ti ti-arrows-exchange item-icon"></i> Generics</div>
+      <div class="curriculum-item" data-topic="modules" onclick="selectTopic('modules')"><i class="ti ti-package item-icon"></i> Modules & Imports</div>
+      <div class="curriculum-item" data-topic="enums" onclick="selectTopic('enums')"><i class="ti ti-tag item-icon"></i> Enums</div>
+      <div class="curriculum-item" data-topic="decorators" onclick="selectTopic('decorators')"><i class="ti ti-sparkles item-icon"></i> Decorators</div>
+      <div class="sidebar-section-title">Playwright</div>
+      <div class="curriculum-item" data-topic="pw_intro" onclick="selectTopic('pw_intro')"><i class="ti ti-settings item-icon"></i> Setup & Config</div>
+      <div class="curriculum-item" data-topic="pw_locators" onclick="selectTopic('pw_locators')"><i class="ti ti-target item-icon"></i> Locators & Selectors</div>
+      <div class="curriculum-item" data-topic="pw_actions" onclick="selectTopic('pw_actions')"><i class="ti ti-cursor-text item-icon"></i> Actions & Interactions</div>
+      <div class="curriculum-item" data-topic="pw_assertions" onclick="selectTopic('pw_assertions')"><i class="ti ti-checkbox item-icon"></i> Assertions</div>
+      <div class="curriculum-item" data-topic="pw_pages" onclick="selectTopic('pw_pages')"><i class="ti ti-layout-2 item-icon"></i> Page Object Model</div>
+      <div class="curriculum-item" data-topic="pw_hooks" onclick="selectTopic('pw_hooks')"><i class="ti ti-hook item-icon"></i> Hooks & Fixtures</div>
+      <div class="curriculum-item" data-topic="pw_api" onclick="selectTopic('pw_api')"><i class="ti ti-api item-icon"></i> API Testing</div>
+      <div class="curriculum-item" data-topic="pw_advanced" onclick="selectTopic('pw_advanced')"><i class="ti ti-rocket item-icon"></i> Advanced Topics</div>
+    </div>
+    <div id="main">
+      <div id="chat"></div>
+      <div id="quick-chips"></div>
+      <div id="input-wrap">
+        <textarea id="user-input" placeholder="Ask anything, answer questions, or type 'next' to continue..." rows="1"></textarea>
+        <button id="send-btn" onclick="sendMessage()"><i class="ti ti-send"></i></button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const SYSTEM_PROMPT = `You are "Arjun Sir" — a warm, enthusiastic, deeply knowledgeable Indian tech tutor teaching TypeScript and Playwright for Test Automation. You speak like a real human teacher who genuinely cares about students. Your students are mostly Indian learners with non-technical backgrounds.
+
+YOUR TEACHING STYLE:
+- Talk naturally like a real teacher in a classroom. Use "arrey yaar", "dekho", "samjhe?", mix tiny bit of Hinglish for warmth — keep it mostly English
+- Use relatable Indian analogies: tiffin boxes, railway reservations, Aadhaar cards, cricket, WhatsApp, Zomato, IRCTC, etc.
+- Always cover: WHAT it is → WHY it matters → WHERE it is used → HOW to use it
+- Explain deeply — not just how to use but WHY it works that way internally
+- Show ALL syntax variants, not just one way
+- ALWAYS show what can go WRONG and how to fix it
+- Use step-by-step code with comments explaining every single line
+- After explaining a concept ask 1-2 engaging cross-questions
+- At end of each topic give a 2-3 question quiz with [A] [B] [C] [D] options
+- For diagrams use ASCII art
+- Be encouraging — celebrate correct answers
+- If wrong answer, be kind and explain WHY it is wrong
+
+RESPONSE FORMAT:
+- Code blocks: use triple backtick ts
+- Analogies: start line with 🎯 ANALOGY:
+- Warnings: start line with ⚠️ COMMON MISTAKE:
+- Tips: start line with 💡 PRO TIP:
+- Keep responses conversational but detailed (400-800 words)
+- End with a cross-question OR next-topic prompt
+
+When topic is given as [TOPIC:xxx] teach THAT topic from scratch for non-technical Indian students.`;
+
+const TOPIC_NAMES = {
+  intro:"Introduction to TypeScript", variables:"Variables & Data Types", functions:"Functions in TypeScript",
+  interfaces:"Interfaces & Type Aliases", classes:"Classes & OOP", arrays:"Arrays & Objects",
+  async:"Async / Await / Promises", generics:"Generics", modules:"Modules & Imports",
+  enums:"Enums", decorators:"Decorators", pw_intro:"Playwright Setup & Config",
+  pw_locators:"Locators & Selectors", pw_actions:"Actions & Interactions", pw_assertions:"Assertions",
+  pw_pages:"Page Object Model", pw_hooks:"Hooks & Fixtures", pw_api:"API Testing", pw_advanced:"Advanced Topics"
+};
+
+const TOPIC_CHIPS = {
+  intro:["What is TypeScript?","Why learn TS?","TS vs JS?","Show me an example"],
+  variables:["Show all types","What is 'any'?","Wrong examples","Type inference?"],
+  functions:["Arrow functions","Optional params","Return types","Overloads?"],
+  interfaces:["Interface vs Type","Optional fields","Nested interfaces","Wrong usage"],
+  classes:["What is a class?","Inheritance example","Access modifiers","Abstract class?"],
+  arrays:["Array methods","Tuple vs Array","Object spreading","Destructuring"],
+  async:["What is a Promise?","Async/await example","Error handling","Multiple awaits"],
+  generics:["Simple example","Generic functions","Constraints","Real use case"],
+  modules:["Import/export types","Default vs named","Barrel files","Module resolution"],
+  enums:["Numeric vs string","Const enums","Reverse mapping","When to use?"],
+  decorators:["What is a decorator?","Class decorator","Property decorator","Real example"],
+  pw_intro:["Install steps","Config options","First test","Browsers setup"],
+  pw_locators:["getByRole","CSS selectors","XPath","Best practices"],
+  pw_actions:["click & type","Fill forms","Drag & drop","Keyboard shortcuts"],
+  pw_assertions:["expect().toHaveText","Soft assertions","Custom matchers","Async assertions"],
+  pw_pages:["Why POM?","Build a Page class","Inheritance in POM","Real example"],
+  pw_hooks:["beforeEach","Custom fixtures","Fixture scope","Parallel tests"],
+  pw_api:["GET request","POST with body","Auth headers","API + UI combo"],
+  pw_advanced:["Network intercept","Screenshots","Videos","CI/CD setup"]
+};
+
+let history = [], currentTopic = 'intro', completedTopics = new Set(), isLoading = false;
+const chat = document.getElementById('chat');
+const inputEl = document.getElementById('user-input');
+const sendBtn = document.getElementById('send-btn');
+const TOTAL = Object.keys(TOPIC_NAMES).length;
+
+function updateProgress() {
+  const pct = Math.round((completedTopics.size / TOTAL) * 100);
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = pct + '%';
+}
+
+function renderChips(topic) {
+  const wrap = document.getElementById('quick-chips');
+  wrap.innerHTML = '';
+  (TOPIC_CHIPS[topic] || []).forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'chip'; el.textContent = c;
+    el.onclick = () => { inputEl.value = c; sendMessage(); };
+    wrap.appendChild(el);
+  });
+  const next = document.createElement('div');
+  next.className = 'chip next-chip'; next.textContent = '▶ Next topic';
+  next.onclick = () => { inputEl.value = 'next topic'; sendMessage(); };
+  wrap.appendChild(next);
+}
+
+function formatMessage(text) {
+  let t = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  t = t.replace(/```ts\n?([\s\S]*?)```/g, (_, code) => {
+    const c = code
+      .replace(/(const|let|var|function|return|async|await|import|export|from|class|interface|type|extends|implements|new|this|if|else|for|while|of|in|true|false|null|undefined|void|never|any|string|number|boolean|enum|readonly|public|private|protected|abstract|static)\b/g, '<span class="kw">$1</span>')
+      .replace(/(["'`])((?:[^\\]|\\.)*?)\1/g, '<span class="str">$1$2$1</span>')
+      .replace(/\/\/.*/g, '<span class="cmt">$&</span>')
+      .replace(/\b(\d+)\b/g, '<span class="num">$1</span>');
+    return '<pre>' + c + '</pre>';
+  });
+  t = t.replace(/```[\w]*\n?([\s\S]*?)```/g, (_,c) => '<pre>'+c+'</pre>');
+  t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
+  t = t.replace(/🎯 ANALOGY:([\s\S]*?)(?=\n\n|\n[🎯⚠️💡📊]|$)/g, (_,c) => `<div class="analogy-box"><strong>🎯 Analogy</strong><br>${c.trim()}</div>`);
+  t = t.replace(/⚠️ COMMON MISTAKE:([\s\S]*?)(?=\n\n|\n[🎯⚠️💡📊]|$)/g, (_,c) => `<div class="warn-box"><strong>⚠️ Common Mistake</strong><br>${c.trim()}</div>`);
+  t = t.replace(/💡 PRO TIP:([\s\S]*?)(?=\n\n|\n[🎯⚠️💡📊]|$)/g, (_,c) => `<div class="tip-box"><strong>💡 Pro Tip</strong><br>${c.trim()}</div>`);
+  t = t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  t = t.replace(/\n/g, '<br>');
+  return t;
+}
+
+function addMessage(role, text) {
+  const msg = document.createElement('div');
+  msg.className = 'msg ' + (role === 'user' ? 'user' : 'tutor');
+  const av = document.createElement('div');
+  av.className = 'msg-avatar ' + (role === 'user' ? 'user' : 'tutor');
+  av.textContent = role === 'user' ? 'U' : 'A';
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.innerHTML = role === 'user' ? text.replace(/</g,'&lt;') : formatMessage(text);
+  msg.appendChild(av); msg.appendChild(bubble);
+  chat.appendChild(msg);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function showTyping() {
+  const msg = document.createElement('div');
+  msg.className = 'msg tutor'; msg.id = 'typing-msg';
+  const av = document.createElement('div');
+  av.className = 'msg-avatar tutor'; av.textContent = 'A';
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.innerHTML = '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+  msg.appendChild(av); msg.appendChild(bubble);
+  chat.appendChild(msg); chat.scrollTop = chat.scrollHeight;
+}
+
+function removeTyping() { const el = document.getElementById('typing-msg'); if(el) el.remove(); }
+
+async function callAPI(userMsg) {
+  history.push({ role: 'user', content: userMsg });
+  // Calls our own /api/chat endpoint — API key stays secret on the server
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages: history, system: SYSTEM_PROMPT })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Server error');
+  const reply = data.content?.[0]?.text || 'Sorry, could not respond. Try again!';
+  history.push({ role: 'assistant', content: reply });
+  if (history.length > 30) history = history.slice(-30);
+  return reply;
+}
+
+async function sendMessage(override) {
+  const text = override || inputEl.value.trim();
+  if (!text || isLoading) return;
+  inputEl.value = ''; inputEl.style.height = 'auto';
+  isLoading = true; sendBtn.disabled = true;
+  addMessage('user', text); showTyping();
+  try {
+    const reply = await callAPI(text);
+    removeTyping(); addMessage('tutor', reply);
+    if (text.toLowerCase().includes('next topic') || text.toLowerCase() === 'next') {
+      completedTopics.add(currentTopic); updateProgress();
+      const el = document.querySelector(`.curriculum-item[data-topic="${currentTopic}"]`);
+      if (el) { el.classList.add('done'); const ic = el.querySelector('.item-icon'); if(ic) ic.className='ti ti-check item-icon'; }
+    }
+  } catch(e) {
+    removeTyping();
+    addMessage('tutor', 'Arrey yaar! Kuch issue aa gaya 😅 — ' + e.message);
+  }
+  isLoading = false; sendBtn.disabled = false;
+}
+
+async function selectTopic(topic) {
+  document.querySelectorAll('.curriculum-item').forEach(el => el.classList.remove('active'));
+  const el = document.querySelector(`.curriculum-item[data-topic="${topic}"]`);
+  if (el) el.classList.add('active');
+  currentTopic = topic;
+  document.getElementById('header-sub').textContent = TOPIC_NAMES[topic];
+  renderChips(topic); history = [];
+  isLoading = true; sendBtn.disabled = true;
+  addMessage('user', '📚 Starting: ' + TOPIC_NAMES[topic]); showTyping();
+  try {
+    const reply = await callAPI(`[TOPIC:${topic}] Teach "${TOPIC_NAMES[topic]}" from scratch for non-technical Indian students. Start with a warm intro.`);
+    removeTyping(); addMessage('tutor', reply);
+  } catch(e) { removeTyping(); addMessage('tutor', 'Issue loading topic: ' + e.message); }
+  isLoading = false; sendBtn.disabled = false;
+}
+
+async function init() {
+  currentTopic = 'intro'; renderChips('intro');
+  isLoading = true; sendBtn.disabled = true; showTyping();
+  try {
+    const reply = await callAPI('[TOPIC:intro] Give a warm energetic welcome to Indian non-technical students. Explain what TypeScript is, why learn it for test automation, what they will build, then start the first concept. Make it exciting and human!');
+    removeTyping(); addMessage('tutor', reply);
+  } catch(e) { removeTyping(); addMessage('tutor', 'Namaste! 🙏 Welcome! Could not connect — ' + e.message + '. Please refresh.'); }
+  isLoading = false; sendBtn.disabled = false;
+}
+
+inputEl.addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();} });
+inputEl.addEventListener('input', () => { inputEl.style.height='auto'; inputEl.style.height=Math.min(inputEl.scrollHeight,100)+'px'; });
+init();
+</script>
+</body>
+</html>
